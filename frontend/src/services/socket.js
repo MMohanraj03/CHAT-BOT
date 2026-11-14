@@ -1,6 +1,9 @@
 import { io } from 'socket.io-client';
 
 const getSocketUrl = () => {
+  if (import.meta.env?.VITE_BACKEND_URL) {
+    return import.meta.env.VITE_BACKEND_URL;
+  }
   if (typeof window !== 'undefined' && window.location.port === '5173') {
     return window.location.origin;
   }

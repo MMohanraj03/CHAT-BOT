@@ -1,8 +1,9 @@
 {
-  "name": "chat-app-root",
+  "name": "chat-bot",
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "build": "cd frontend && npm install && npm run build",
     "dev": "npm run dev --prefix frontend",
     "dev:frontend": "npm run dev --prefix frontend",
     "dev:backend": "npm run dev --prefix backend",

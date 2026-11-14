@@ -1,5 +1,8 @@
-// In development, Vite proxies '/api' to 'http://localhost:5000/api'
+// Supports Vercel environment variables or local dev proxy
 const getBaseUrl = () => {
+  if (import.meta.env?.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
   if (typeof window !== 'undefined' && window.location.port === '5173') {
     return '/api';
   }
