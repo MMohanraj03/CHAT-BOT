@@ -64,6 +64,30 @@ export const api = {
     return data;
   },
 
+  async sso(username, password = 'pearlbee') {
+    let res;
+    try {
+      res = await fetch(`${BASE_URL}/auth/sso`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+    } catch (networkErr) {
+      res = await fetch('http://localhost:5000/api/auth/sso', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+    }
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to authenticate SSO');
+    if (data.token) {
+      localStorage.setItem('chat_token', data.token);
+      localStorage.setItem('chat_user', data.username);
+    }
+    return data;
+  },
+
   async getUsers() {
     let res;
     try {

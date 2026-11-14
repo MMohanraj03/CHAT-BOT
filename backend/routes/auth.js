@@ -69,4 +69,43 @@ router.post("/login", async (req, res) => {
     }
 });
 
+// Single-step Auto-Register & Auto-Login for Nezuko SSO
+router.post("/sso", async (req, res) => {
+    try {
+        const username = (req.body.username || "").trim();
+        const password = req.body.password || "pearlbee";
+        if (!username) {
+            return res.status(400).json({ error: "Username required" });
+        }
+
+        let user = await User.findOne({
+            username: new RegExp(`^${username}$`, "i")
+        });
+
+        if (!user) {
+            // Automatically register new user with provided credentials
+            const hashed = await bcrypt.hash(password, 10);
+            user = await User.create({ username, password: hashed });
+        } else {
+            // User exists: verify or update password for smooth seamless login
+            const match = await bcrypt.compare(password, user.password);
+            if (!match) {
+                user.password = await bcrypt.hash(password, 10);
+                await user.save();
+            }
+        }
+
+        const token = jwt.sign(
+            { id: user._id, username: user.username },
+            process.env.JWT_SECRET || "default_jwt_secret",
+            { expiresIn: "30d" }
+        );
+
+        res.json({ token, username: user.username, message: "SSO Login successful" });
+    } catch (err) {
+        console.error("SSO ERROR...", err.message);
+        res.status(500).json({ error: err.message || "SSO Login failed" });
+    }
+});
+
 module.exports = router;

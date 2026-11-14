@@ -38,19 +38,23 @@ export default function App() {
       setSsoMessage(`Connecting as "${ssoUser}" from NEZUKO...`);
       try {
         let loginData = null;
-        // Step A: Attempt login
+        // Step A: Dedicated SSO auto-register & login
         try {
-          loginData = await api.login(ssoUser, ssoPass);
-        } catch (loginErr) {
-          // Step B: If account doesn't exist yet, automatically register it with the NEZUKO password!
-          setSsoMessage(`Registering "${ssoUser}" in Chat Bot...`);
+          loginData = await api.sso(ssoUser, ssoPass);
+        } catch (ssoEndpointErr) {
+          console.warn('[SSO direct endpoint note]:', ssoEndpointErr.message);
+          // Fallback: Attempt standard login, or register then login
           try {
-            await api.register(ssoUser, ssoPass);
-          } catch (regErr) {
-            console.warn('[SSO] Registration note:', regErr.message);
+            loginData = await api.login(ssoUser, ssoPass);
+          } catch (loginErr) {
+            setSsoMessage(`Registering "${ssoUser}" in Chat Bot...`);
+            try {
+              await api.register(ssoUser, ssoPass);
+            } catch (regErr) {
+              console.warn('[SSO] Registration note:', regErr.message);
+            }
+            loginData = await api.login(ssoUser, ssoPass);
           }
-          // Now login with the newly created account
-          loginData = await api.login(ssoUser, ssoPass);
         }
 
         if (loginData && loginData.username) {
