@@ -4,6 +4,9 @@ const getBaseUrl = () => {
   if (import.meta.env?.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
+  if (typeof window !== 'undefined' && !window.location.hostname.includes('localhost')) {
+    return 'https://nezuko-01.vercel.app/api';
+  }
   return '/api';
 };
 
