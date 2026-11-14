@@ -4,15 +4,29 @@ const getSocketUrl = () => {
   if (import.meta.env?.VITE_BACKEND_URL) {
     return import.meta.env.VITE_BACKEND_URL;
   }
-  if (typeof window !== 'undefined' && window.location.port === '5173') {
-    return window.location.origin;
+  if (typeof window !== 'undefined') {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return 'http://localhost:5000';
+    }
   }
-  return 'http://localhost:5000';
+  return null;
 };
 
 let socket = null;
 
 export const initSocket = (username) => {
+  const targetUrl = getSocketUrl();
+  if (!targetUrl) {
+    // In serverless Vercel without a persistent socket server, HTTP auto-polling handles live messaging
+    return {
+      connected: false,
+      emit: () => {},
+      on: () => {},
+      off: () => {},
+      disconnect: () => {},
+    };
+  }
+
   if (socket) {
     if (username && socket.connected) {
       socket.emit('userOnline', username);
@@ -20,7 +34,6 @@ export const initSocket = (username) => {
     return socket;
   }
 
-  const targetUrl = getSocketUrl();
   console.log('[Socket] Initializing connection to:', targetUrl);
 
   socket = io(targetUrl, {
@@ -39,7 +52,7 @@ export const initSocket = (username) => {
   });
 
   socket.on('connect_error', (err) => {
-    console.warn('[Socket] Connection error:', err.message);
+    console.warn('[Socket] Connection note:', err.message);
   });
 
   socket.on('disconnect', (reason) => {
@@ -52,7 +65,7 @@ export const initSocket = (username) => {
 export const getSocket = () => socket;
 
 export const disconnectSocket = () => {
-  if (socket) {
+  if (socket && typeof socket.disconnect === 'function') {
     socket.disconnect();
     socket = null;
   }

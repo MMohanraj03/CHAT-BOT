@@ -1,12 +1,10 @@
-// Supports Vercel environment variables or local dev proxy
+// In development, Vite proxies '/api' to 'http://localhost:5000/api'
+// In production on Vercel, '/api' is routed directly to our serverless backend function
 const getBaseUrl = () => {
   if (import.meta.env?.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
-  if (typeof window !== 'undefined' && window.location.port === '5173') {
-    return '/api';
-  }
-  return 'http://localhost:5000/api';
+  return '/api';
 };
 
 const BASE_URL = getBaseUrl();
@@ -82,6 +80,22 @@ export const api = {
     return data;
   },
 
+  async getRecentConversations() {
+    let res;
+    try {
+      res = await fetch(`${BASE_URL}/message/conversations/recent`, {
+        headers: getAuthHeaders(),
+      });
+    } catch (networkErr) {
+      res = await fetch('http://localhost:5000/api/message/conversations/recent', {
+        headers: getAuthHeaders(),
+      });
+    }
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to fetch recent conversations');
+    return data;
+  },
+
   async getMessages(receiver) {
     let res;
     try {
@@ -115,22 +129,6 @@ export const api = {
     }
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Failed to send message');
-    return data;
-  },
-
-  async getRecentConversations() {
-    let res;
-    try {
-      res = await fetch(`${BASE_URL}/message/conversations/recent`, {
-        headers: getAuthHeaders(),
-      });
-    } catch (networkErr) {
-      res = await fetch('http://localhost:5000/api/message/conversations/recent', {
-        headers: getAuthHeaders(),
-      });
-    }
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to fetch recent conversations');
     return data;
   },
 

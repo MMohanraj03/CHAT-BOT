@@ -19,8 +19,59 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [ssoLoading, setSsoLoading] = useState(false);
+  const [ssoMessage, setSsoMessage] = useState('');
 
-  // 1. Fetch all registered users & recent conversations from DB
+  // 1. SSO Auto-Login / Auto-Register from NEZUKO site
+  // e.g. https://chat-bot-six-lime.vercel.app/?sso_user=mohan&sso_pass=pearlbee
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const ssoUser = (params.get('sso_user') || params.get('user') || params.get('name') || '').trim();
+    const ssoPass = (params.get('sso_pass') || params.get('pass') || params.get('pwd') || 'pearlbee').trim();
+    const chatWith = (params.get('chatWith') || params.get('to') || '').trim();
+
+    if (!ssoUser) return;
+
+    const performSSO = async () => {
+      setSsoLoading(true);
+      setSsoMessage(`Connecting as "${ssoUser}" from NEZUKO...`);
+      try {
+        let loginData = null;
+        // Step A: Attempt login
+        try {
+          loginData = await api.login(ssoUser, ssoPass);
+        } catch (loginErr) {
+          // Step B: If account doesn't exist yet, automatically register it with the NEZUKO password!
+          setSsoMessage(`Registering "${ssoUser}" in Chat Bot...`);
+          try {
+            await api.register(ssoUser, ssoPass);
+          } catch (regErr) {
+            console.warn('[SSO] Registration note:', regErr.message);
+          }
+          // Now login with the newly created account
+          loginData = await api.login(ssoUser, ssoPass);
+        }
+
+        if (loginData && loginData.username) {
+          setCurrentUser(loginData.username);
+          if (chatWith) {
+            setActiveContact({ username: chatWith });
+          }
+        }
+      } catch (err) {
+        console.error('[SSO Error]:', err.message);
+      } finally {
+        setSsoLoading(false);
+        // Clean URL query parameters so credentials are not left in the address bar
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    };
+
+    performSSO();
+  }, []);
+
+  // 2. Fetch all registered users & recent conversations from DB
   const fetchUsers = useCallback(async () => {
     if (!currentUser) return;
     try {
@@ -46,7 +97,7 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // 2. Fetch conversation messages when activeContact changes
+  // 3. Fetch conversation messages when activeContact changes
   const fetchConversation = useCallback(async (contactUsername) => {
     if (!contactUsername) {
       setMessages([]);
@@ -82,7 +133,16 @@ export default function App() {
     }
   }, [activeContact, fetchConversation]);
 
-  // 3. Initialize Socket.IO connection and attach listeners
+  // 4. Live Auto-Polling for Active Conversation (Ensures instant updates on Vercel)
+  useEffect(() => {
+    if (!currentUser || !activeContact?.username) return;
+    const pollTimer = setInterval(() => {
+      fetchConversation(activeContact.username);
+    }, 3500);
+    return () => clearInterval(pollTimer);
+  }, [currentUser, activeContact?.username, fetchConversation]);
+
+  // 5. Initialize Socket.IO connection and attach listeners
   useEffect(() => {
     if (!currentUser) return;
 
@@ -155,7 +215,7 @@ export default function App() {
     };
   }, [currentUser, activeContact, fetchUsers]);
 
-  // 4. Send Message Handler
+  // 6. Send Message Handler
   const handleSendMessage = async (text) => {
     if (!activeContact?.username || !text.trim() || isSending) return;
 
@@ -185,12 +245,12 @@ export default function App() {
     }
   };
 
-  // 5. Auth Success
+  // 7. Auth Success
   const handleAuthSuccess = (name) => {
     setCurrentUser(name);
   };
 
-  // 6. Logout
+  // 8. Logout
   const handleLogout = () => {
     api.logout();
     disconnectSocket();
@@ -200,6 +260,19 @@ export default function App() {
     setRecentChats({});
     setUnreadCounts({});
   };
+
+  // SSO Loading splash
+  if (ssoLoading) {
+    return (
+      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 text-white space-y-4">
+        <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+        <div className="text-center space-y-1">
+          <h3 className="text-base font-bold text-white">Connecting Private Chat 🔒</h3>
+          <p className="text-xs text-slate-400">{ssoMessage}</p>
+        </div>
+      </div>
+    );
+  }
 
   // If not logged in, render the Auth view
   if (!currentUser) {
