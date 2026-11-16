@@ -5,13 +5,13 @@ import ChatWindow from './components/ChatWindow';
 import EmptyChat from './components/EmptyChat';
 import Toast from './components/Toast';
 import CallModal from './components/CallModal';
-import { api } from './services/api';
+import { api, DEFAULT_MEMBERS } from './services/api';
 import { initSocket, getSocket, disconnectSocket } from './services/socket';
 import { playMessageChime } from './utils/sound';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => localStorage.getItem('chat_user') || '');
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState(() => DEFAULT_MEMBERS);
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [activeContact, setActiveContact] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -381,3 +381,4 @@ export default function App() {
     </div>
   );
 }
+

@@ -1,15 +1,17 @@
-// In development, Vite proxies '/api' to 'http://localhost:5000/api'
-// In production or fallback, routes directly to https://nezuko-01.vercel.app/api
-const CLOUD_API_URL = 'https://nezuko-01.vercel.app/api';
+// Dual-layer Cloud & Local API client for Chat Bot
+export const CLOUD_API_URL = 'https://nezuko-01.vercel.app/api';
 
-const getBaseUrl = () => {
-  if (import.meta.env?.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
-  }
-  return '/api';
-};
+const isLocal = typeof window !== 'undefined' && window.location.hostname.includes('localhost');
+export const API_BASE = isLocal ? 'http://localhost:5000/api' : CLOUD_API_URL;
 
-const BASE_URL = getBaseUrl();
+export const DEFAULT_MEMBERS = [
+  { _id: 'u-joker', username: 'joker', avatar: '/avatars/joker.jpg' },
+  { _id: 'u-Mohanraj', username: 'Mohanraj', avatar: '/avatars/joker.jpg' },
+  { _id: 'u-GOD', username: 'GOD', avatar: 'https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=150&q=80' },
+  { _id: 'u-nezuko', username: 'nezuko', avatar: '/avatars/nezuko.jpg' },
+  { _id: 'u-Dora', username: 'Dora', avatar: '/logo_eye.jpg' },
+  { _id: 'u-Ruler', username: 'Ruler', avatar: '/logo_eye.jpg' },
+];
 
 export const getAuthHeaders = () => {
   const token = localStorage.getItem('chat_token');
@@ -24,139 +26,169 @@ export const getAuthHeaders = () => {
 
 export const api = {
   async register(username, password) {
-    let res;
+    const body = { username, password };
     try {
-      res = await fetch(`${BASE_URL}/auth/register`, {
+      const res = await fetch(`${API_BASE}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error('Local register fallback');
-    } catch {
-      res = await fetch(`${CLOUD_API_URL}/auth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-    }
-    const data = await res.json();
-    return data;
+      if (res.ok) return await res.json();
+    } catch {}
+
+    const res2 = await fetch(`${CLOUD_API_URL}/auth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    return await res2.json();
   },
 
   async login(username, password) {
-    let res;
+    const body = { username, password };
+    let data = null;
     try {
-      res = await fetch(`${BASE_URL}/auth/login`, {
+      const res = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error('Local login fallback');
-    } catch {
-      res = await fetch(`${CLOUD_API_URL}/auth`, {
+      if (res.ok) data = await res.json();
+    } catch {}
+
+    if (!data) {
+      const res2 = await fetch(`${CLOUD_API_URL}/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify(body),
       });
+      data = await res2.json();
     }
-    const data = await res.json();
-    if (data.token) {
-      localStorage.setItem('chat_token', data.token);
+
+    if (data && (data.token || data.username)) {
+      localStorage.setItem('chat_token', data.token || 'nezuko_jwt_' + btoa(username));
       localStorage.setItem('chat_user', data.username || username);
     }
-    return data;
+    return data || { username };
   },
 
   async sso(username, password = 'pearlbee') {
-    let res;
-    try {
-      res = await fetch(`${BASE_URL}/auth/sso`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-      if (!res.ok) throw new Error('Local sso fallback');
-    } catch {
-      res = await fetch(`${CLOUD_API_URL}/auth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-    }
-    const data = await res.json();
-    if (data.token) {
-      localStorage.setItem('chat_token', data.token);
-      localStorage.setItem('chat_user', data.username || username);
-    }
-    return data;
+    return this.login(username, password);
   },
 
   async getUsers() {
-    let res;
+    let list = [];
     try {
-      res = await fetch(`${BASE_URL}/auth/users`, {
-        headers: getAuthHeaders(),
+      const res = await fetch(`${API_BASE}/auth`, {
+        headers: { Accept: 'application/json' },
       });
-      if (!res.ok) throw new Error('Local fetch users fallback');
-    } catch {
-      res = await fetch(`${CLOUD_API_URL}/auth`, {
-        headers: getAuthHeaders(),
-      });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          list = data;
+        }
+      }
+    } catch (err) {
+      console.warn('[API] getUsers primary note:', err.message);
     }
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
+
+    if (list.length === 0) {
+      try {
+        const res2 = await fetch(`${CLOUD_API_URL}/auth`, {
+          headers: { Accept: 'application/json' },
+        });
+        if (res2.ok) {
+          const data2 = await res2.json();
+          if (Array.isArray(data2)) list = data2;
+        }
+      } catch {}
+    }
+
+    // Always merge authoritative registered members with DEFAULT_MEMBERS
+    const map = new Map();
+    DEFAULT_MEMBERS.forEach((m) => map.set(m.username.toLowerCase(), m));
+    list.forEach((m) => {
+      if (m && m.username) {
+        map.set(m.username.toLowerCase(), {
+          _id: m._id || `u-${m.username}`,
+          username: m.username,
+          avatar: m.avatar || '/logo_eye.jpg',
+          createdAt: m.createdAt,
+        });
+      }
+    });
+
+    return Array.from(map.values());
   },
 
   async getRecentConversations() {
-    let res;
+    const user = (typeof localStorage !== 'undefined' ? localStorage.getItem('chat_user') : '') || '';
     try {
-      res = await fetch(`${BASE_URL}/message/conversations/recent`, {
+      const res = await fetch(`${API_BASE}/message/conversations/recent?user=${encodeURIComponent(user)}`, {
         headers: getAuthHeaders(),
       });
-      if (!res.ok) throw new Error('Local recent fallback');
-    } catch {
-      res = await fetch(`${CLOUD_API_URL}/message/conversations/recent`, {
-        headers: getAuthHeaders(),
+      if (res.ok) return await res.json();
+    } catch {}
+
+    try {
+      const res2 = await fetch(`${CLOUD_API_URL}/private-chat?user=${encodeURIComponent(user)}`, {
+        headers: { Accept: 'application/json' },
       });
-    }
-    const data = await res.json();
-    return data && typeof data === 'object' ? data : {};
+      if (res2.ok) {
+        const data = await res2.json();
+        return data.recentChats || {};
+      }
+    } catch {}
+
+    return {};
   },
 
   async getMessages(receiver) {
-    let res;
+    if (!receiver) return [];
+    const currentUser = (typeof localStorage !== 'undefined' ? localStorage.getItem('chat_user') : '') || '';
     try {
-      res = await fetch(`${BASE_URL}/message/${encodeURIComponent(receiver)}`, {
+      const res = await fetch(`${API_BASE}/message/${encodeURIComponent(receiver)}?user=${encodeURIComponent(currentUser)}`, {
         headers: getAuthHeaders(),
       });
-      if (!res.ok) throw new Error('Local messages fallback');
-    } catch {
-      res = await fetch(`${CLOUD_API_URL}/message/${encodeURIComponent(receiver)}`, {
-        headers: getAuthHeaders(),
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) return data;
+      }
+    } catch {}
+
+    try {
+      const res2 = await fetch(`${CLOUD_API_URL}/private-chat?user=${encodeURIComponent(currentUser)}&with=${encodeURIComponent(receiver)}`, {
+        headers: { Accept: 'application/json' },
       });
-    }
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
+      if (res2.ok) {
+        const data2 = await res2.json();
+        if (data2 && Array.isArray(data2.messages)) return data2.messages;
+      }
+    } catch {}
+
+    return [];
   },
 
   async sendMessage(receiver, text) {
-    let res;
+    const currentUser = (typeof localStorage !== 'undefined' ? localStorage.getItem('chat_user') : '') || 'Member';
+    const body = { sender: currentUser, receiver, text };
+
     try {
-      res = await fetch(`${BASE_URL}/message`, {
+      const res = await fetch(`${API_BASE}/message`, {
         method: 'POST',
         headers: getAuthHeaders(),
-        body: JSON.stringify({ receiver, text }),
+        body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error('Local send fallback');
-    } catch {
-      res = await fetch(`${CLOUD_API_URL}/message`, {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ receiver, text }),
-      });
-    }
-    const data = await res.json();
-    return data;
+      if (res.ok) return await res.json();
+    } catch {}
+
+    const res2 = await fetch(`${CLOUD_API_URL}/private-chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    const data2 = await res2.json();
+    return data2.message || { _id: `msg-${Date.now()}`, sender: currentUser, receiver, text, createdAt: Date.now() };
   },
 
   logout() {
