@@ -40,5 +40,10 @@
     "username": "raja",
     "password": "$2b$10$xOAUdGNvz9SnuGZg/ago0OvzQfUdABJiCXSLIVJlu0MEFbWGe/pwu",
     "createdAt": "2026-11-16T06:44:13.696Z"
+  },
+  {
+    "_id": "u-1794822099393",
+    "username": "mohan",
+    "createdAt": "2026-11-16T09:41:39.393Z"
   }
 ]

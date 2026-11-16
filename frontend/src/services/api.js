@@ -33,7 +33,17 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        if (isLocal) {
+          fetch(`${CLOUD_API_URL}/auth`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          }).catch(() => {});
+        }
+        return data;
+      }
     } catch {}
 
     const res2 = await fetch(`${CLOUD_API_URL}/auth`, {
@@ -53,10 +63,19 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (res.ok) data = await res.json();
+      if (res.ok) {
+        data = await res.json();
+        if (isLocal) {
+          fetch(`${CLOUD_API_URL}/auth`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          }).catch(() => {});
+        }
+      }
     } catch {}
 
-    if (!data) {
+    if (!data || !data.token) {
       const res2 = await fetch(`${CLOUD_API_URL}/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -179,16 +198,37 @@ export const api = {
         headers: getAuthHeaders(),
         body: JSON.stringify(body),
       });
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const data = await res.json();
+        if (isLocal) {
+          fetch(`${CLOUD_API_URL}/message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-user': currentUser },
+            body: JSON.stringify(body)
+          }).catch(() => {});
+        }
+        return data;
+      }
     } catch {}
 
-    const res2 = await fetch(`${CLOUD_API_URL}/private-chat`, {
+    try {
+      const res2 = await fetch(`${CLOUD_API_URL}/message`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-user': currentUser },
+        body: JSON.stringify(body),
+      });
+      if (res2.ok) {
+        return await res2.json();
+      }
+    } catch {}
+
+    const res3 = await fetch(`${CLOUD_API_URL}/private-chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    const data2 = await res2.json();
-    return data2.message || { _id: `msg-${Date.now()}`, sender: currentUser, receiver, text, createdAt: Date.now() };
+    const data3 = await res3.json();
+    return data3.message || { _id: `msg-${Date.now()}`, sender: currentUser, receiver, text, createdAt: Date.now() };
   },
 
   logout() {

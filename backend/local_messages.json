@@ -5,5 +5,48 @@
     "receiver": "Mohanraj",
     "text": "Hello from raja",
     "createdAt": "2026-11-16T06:45:14.672Z"
+  },
+  {
+    "_id": "msg-1794822108332-pmlg",
+    "sender": "mohan",
+    "receiver": "raja",
+    "text": "👋 Hello!",
+    "createdAt": "2026-11-16T09:41:48.332Z"
+  },
+  {
+    "_id": "msg-1794822145924-q3dw",
+    "sender": "joker",
+    "receiver": "raja",
+    "text": "👋 Hello!",
+    "createdAt": "2026-11-16T09:42:25.924Z"
+  },
+  {
+    "_id": "msg-1794822174062-x7ti",
+    "sender": "raja",
+    "receiver": "joker",
+    "text": "mm",
+    "createdAt": "2026-11-16T09:42:54.062Z"
+  },
+  {
+    "_id": "msg-1794822324014-7xnl",
+    "sender": "raja",
+    "receiver": "mohan",
+    "text": "mm",
+    "createdAt": "2026-11-16T09:45:24.014Z"
+  },
+  {
+    "_id": "pmsg-1794825066218-3qhxd",
+    "id": "pmsg-1794825066218-3qhxd",
+    "sender": "raja",
+    "receiver": "joker",
+    "text": "Hello joker from raja!",
+    "image": "",
+    "audio": "",
+    "replyTo": null,
+    "reactions": {},
+    "avatar": "/logo_eye.jpg",
+    "timestamp": "04:01 pm",
+    "read": false,
+    "createdAt": 1794825066229
   }
 ]

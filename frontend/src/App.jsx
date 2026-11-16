@@ -249,11 +249,14 @@ export default function App() {
     try {
       const savedMessage = await api.sendMessage(activeContact.username, text.trim());
 
+      setMessages((prev) => {
+        if (savedMessage._id && prev.some((m) => m._id === savedMessage._id)) return prev;
+        return [...prev, savedMessage];
+      });
+
       const socket = getSocket();
       if (socket && socket.connected) {
         socket.emit('sendmessage', savedMessage);
-      } else {
-        setMessages((prev) => [...prev, savedMessage]);
       }
 
       setRecentChats((prev) => ({
