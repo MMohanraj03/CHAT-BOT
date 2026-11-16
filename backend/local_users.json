@@ -1,0 +1,44 @@
+[
+  {
+    "_id": "u-joker",
+    "username": "joker",
+    "password": "",
+    "createdAt": "2026-11-16T06:44:13.631Z"
+  },
+  {
+    "_id": "u-Mohanraj",
+    "username": "Mohanraj",
+    "password": "",
+    "createdAt": "2026-11-16T06:44:13.631Z"
+  },
+  {
+    "_id": "u-GOD",
+    "username": "GOD",
+    "password": "",
+    "createdAt": "2026-11-16T06:44:13.631Z"
+  },
+  {
+    "_id": "u-nezuko",
+    "username": "nezuko",
+    "password": "",
+    "createdAt": "2026-11-16T06:44:13.631Z"
+  },
+  {
+    "_id": "u-Dora",
+    "username": "Dora",
+    "password": "",
+    "createdAt": "2026-11-16T06:44:13.631Z"
+  },
+  {
+    "_id": "u-Ruler",
+    "username": "Ruler",
+    "password": "",
+    "createdAt": "2026-11-16T06:44:13.631Z"
+  },
+  {
+    "_id": "u-1794811453696",
+    "username": "raja",
+    "password": "$2b$10$xOAUdGNvz9SnuGZg/ago0OvzQfUdABJiCXSLIVJlu0MEFbWGe/pwu",
+    "createdAt": "2026-11-16T06:44:13.696Z"
+  }
+]
