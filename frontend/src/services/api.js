@@ -1,11 +1,10 @@
 // In development, Vite proxies '/api' to 'http://localhost:5000/api'
-// In production on Vercel, '/api' is routed directly to our serverless backend function
+// In production or fallback, routes directly to https://nezuko-01.vercel.app/api
+const CLOUD_API_URL = 'https://nezuko-01.vercel.app/api';
+
 const getBaseUrl = () => {
   if (import.meta.env?.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
-  }
-  if (typeof window !== 'undefined' && !window.location.hostname.includes('localhost')) {
-    return 'https://nezuko-01.vercel.app/api';
   }
   return '/api';
 };
@@ -14,8 +13,11 @@ const BASE_URL = getBaseUrl();
 
 export const getAuthHeaders = () => {
   const token = localStorage.getItem('chat_token');
+  const user = localStorage.getItem('chat_user') || 'Member';
   return {
     'Content-Type': 'application/json',
+    'x-user': user,
+    'x-username': user,
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 };
@@ -29,16 +31,15 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
-    } catch (networkErr) {
-      // Fallback direct to port 5000 if proxy was unreachable
-      res = await fetch('http://localhost:5000/api/auth/register', {
+      if (!res.ok) throw new Error('Local register fallback');
+    } catch {
+      res = await fetch(`${CLOUD_API_URL}/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
     }
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to register');
     return data;
   },
 
@@ -50,19 +51,18 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
-    } catch (networkErr) {
-      // Fallback direct to port 5000 if proxy was unreachable
-      res = await fetch('http://localhost:5000/api/auth/login', {
+      if (!res.ok) throw new Error('Local login fallback');
+    } catch {
+      res = await fetch(`${CLOUD_API_URL}/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
     }
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Invalid credentials');
     if (data.token) {
       localStorage.setItem('chat_token', data.token);
-      localStorage.setItem('chat_user', data.username);
+      localStorage.setItem('chat_user', data.username || username);
     }
     return data;
   },
@@ -75,18 +75,18 @@ export const api = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
-    } catch (networkErr) {
-      res = await fetch('http://localhost:5000/api/auth/sso', {
+      if (!res.ok) throw new Error('Local sso fallback');
+    } catch {
+      res = await fetch(`${CLOUD_API_URL}/auth`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
     }
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to authenticate SSO');
     if (data.token) {
       localStorage.setItem('chat_token', data.token);
-      localStorage.setItem('chat_user', data.username);
+      localStorage.setItem('chat_user', data.username || username);
     }
     return data;
   },
@@ -97,14 +97,14 @@ export const api = {
       res = await fetch(`${BASE_URL}/auth/users`, {
         headers: getAuthHeaders(),
       });
-    } catch (networkErr) {
-      res = await fetch('http://localhost:5000/api/auth/users', {
+      if (!res.ok) throw new Error('Local fetch users fallback');
+    } catch {
+      res = await fetch(`${CLOUD_API_URL}/auth`, {
         headers: getAuthHeaders(),
       });
     }
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to fetch users');
-    return data;
+    return Array.isArray(data) ? data : [];
   },
 
   async getRecentConversations() {
@@ -113,14 +113,14 @@ export const api = {
       res = await fetch(`${BASE_URL}/message/conversations/recent`, {
         headers: getAuthHeaders(),
       });
-    } catch (networkErr) {
-      res = await fetch('http://localhost:5000/api/message/conversations/recent', {
+      if (!res.ok) throw new Error('Local recent fallback');
+    } catch {
+      res = await fetch(`${CLOUD_API_URL}/message/conversations/recent`, {
         headers: getAuthHeaders(),
       });
     }
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to fetch recent conversations');
-    return data;
+    return data && typeof data === 'object' ? data : {};
   },
 
   async getMessages(receiver) {
@@ -129,14 +129,14 @@ export const api = {
       res = await fetch(`${BASE_URL}/message/${encodeURIComponent(receiver)}`, {
         headers: getAuthHeaders(),
       });
-    } catch (networkErr) {
-      res = await fetch(`http://localhost:5000/api/message/${encodeURIComponent(receiver)}`, {
+      if (!res.ok) throw new Error('Local messages fallback');
+    } catch {
+      res = await fetch(`${CLOUD_API_URL}/message/${encodeURIComponent(receiver)}`, {
         headers: getAuthHeaders(),
       });
     }
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to fetch messages');
-    return data;
+    return Array.isArray(data) ? data : [];
   },
 
   async sendMessage(receiver, text) {
@@ -147,15 +147,15 @@ export const api = {
         headers: getAuthHeaders(),
         body: JSON.stringify({ receiver, text }),
       });
-    } catch (networkErr) {
-      res = await fetch('http://localhost:5000/api/message', {
+      if (!res.ok) throw new Error('Local send fallback');
+    } catch {
+      res = await fetch(`${CLOUD_API_URL}/message`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ receiver, text }),
       });
     }
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error || 'Failed to send message');
     return data;
   },
 

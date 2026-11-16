@@ -47,7 +47,14 @@ io.on("connection", (socket) => {
     })
 })
 
+server.listen(5000, () => {
+    console.log("Chat Backend Server running on http://localhost:5000");
+});
+
 mongoose
-    .connect(process.env.MONGO_URI)
-    .then(() =>
-        server.listen(5000, () => console.log("Server running on port 5000"))).catch((error) => console.error(error));
+    .connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 5000 })
+    .then(() => console.log("Connected to MongoDB Atlas"))
+    .catch((error) => {
+        console.warn("MongoDB Atlas connection warning (Add 0.0.0.0/0 to Atlas IP Access List):", error.message);
+    });
+

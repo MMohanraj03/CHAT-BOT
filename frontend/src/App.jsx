@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar';
 import ChatWindow from './components/ChatWindow';
 import EmptyChat from './components/EmptyChat';
 import Toast from './components/Toast';
+import CallModal from './components/CallModal';
 import { api } from './services/api';
 import { initSocket, getSocket, disconnectSocket } from './services/socket';
 import { playMessageChime } from './utils/sound';
@@ -22,8 +23,43 @@ export default function App() {
   const [ssoLoading, setSsoLoading] = useState(false);
   const [ssoMessage, setSsoMessage] = useState('');
 
+  // Hacker Theme: 'red' | 'blue'
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('chat_hacker_theme') || 'blue';
+    } catch {
+      return 'blue';
+    }
+  });
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'red' ? 'blue' : 'red';
+    setTheme(nextTheme);
+    try {
+      localStorage.setItem('chat_hacker_theme', nextTheme);
+    } catch {}
+  };
+
+  // WhatsApp Call Modal State
+  const [callModal, setCallModal] = useState({
+    isOpen: false,
+    contact: null,
+    isVideo: false,
+  });
+
+  const handleStartCall = (contact, isVideo = false) => {
+    setCallModal({
+      isOpen: true,
+      contact: contact || activeContact,
+      isVideo,
+    });
+  };
+
+  const handleEndCall = () => {
+    setCallModal({ isOpen: false, contact: null, isVideo: false });
+  };
+
   // 1. SSO Auto-Login / Auto-Register from NEZUKO site
-  // e.g. https://chat-bot-six-lime.vercel.app/?sso_user=mohan&sso_pass=pearlbee
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
@@ -38,21 +74,15 @@ export default function App() {
       setSsoMessage(`Connecting as "${ssoUser}" from NEZUKO...`);
       try {
         let loginData = null;
-        // Step A: Dedicated SSO auto-register & login
         try {
           loginData = await api.sso(ssoUser, ssoPass);
-        } catch (ssoEndpointErr) {
-          console.warn('[SSO direct endpoint note]:', ssoEndpointErr.message);
-          // Fallback: Attempt standard login, or register then login
+        } catch {
           try {
             loginData = await api.login(ssoUser, ssoPass);
-          } catch (loginErr) {
-            setSsoMessage(`Registering "${ssoUser}" in Chat Bot...`);
+          } catch {
             try {
               await api.register(ssoUser, ssoPass);
-            } catch (regErr) {
-              console.warn('[SSO] Registration note:', regErr.message);
-            }
+            } catch {}
             loginData = await api.login(ssoUser, ssoPass);
           }
         }
@@ -67,7 +97,6 @@ export default function App() {
         console.error('[SSO Error]:', err.message);
       } finally {
         setSsoLoading(false);
-        // Clean URL query parameters so credentials are not left in the address bar
         window.history.replaceState({}, document.title, window.location.pathname);
       }
     };
@@ -75,7 +104,7 @@ export default function App() {
     performSSO();
   }, []);
 
-  // 2. Fetch all registered users & recent conversations from DB
+  // 2. Fetch all registered users & recent conversations
   const fetchUsers = useCallback(async () => {
     if (!currentUser) return;
     try {
@@ -117,7 +146,6 @@ export default function App() {
         [contactUsername]: 0,
       }));
 
-      // Update recent chats snippet with the latest message from history
       if (history && history.length > 0) {
         const lastMsg = history[history.length - 1];
         setRecentChats((prev) => ({
@@ -142,7 +170,7 @@ export default function App() {
     if (!currentUser || !activeContact?.username) return;
     const pollTimer = setInterval(() => {
       fetchConversation(activeContact.username);
-    }, 3500);
+    }, 2500);
     return () => clearInterval(pollTimer);
   }, [currentUser, activeContact?.username, fetchConversation]);
 
@@ -168,38 +196,32 @@ export default function App() {
 
       const otherParty = data.sender === currentUser ? data.receiver : data.sender;
 
-      // Update recent chats preview snippet
       setRecentChats((prev) => ({
         ...prev,
         [otherParty]: data,
       }));
 
-      // Check if message belongs to currently open chat
       const isOpenChat =
         activeContact &&
         (data.sender === activeContact.username || data.receiver === activeContact.username);
 
       if (isOpenChat) {
         setMessages((prev) => {
-          // Prevent duplicate messages if already present
           if (data._id && prev.some((m) => m._id === data._id)) return prev;
           return [...prev, data];
         });
       } else if (data.sender !== currentUser) {
-        // Increment unread count for the other party
         setUnreadCounts((prev) => ({
           ...prev,
           [data.sender]: (prev[data.sender] || 0) + 1,
         }));
 
-        // Show toast notification
         setToast({
           sender: data.sender,
           text: data.text,
         });
       }
 
-      // Play pleasant notification sound if received from another user
       if (data.sender !== currentUser) {
         playMessageChime();
       }
@@ -225,19 +247,15 @@ export default function App() {
 
     setIsSending(true);
     try {
-      // Step A: Save message to MongoDB Atlas via REST API
       const savedMessage = await api.sendMessage(activeContact.username, text.trim());
 
-      // Step B: Emit through Socket.IO for real-time delivery to recipient
       const socket = getSocket();
       if (socket && socket.connected) {
         socket.emit('sendmessage', savedMessage);
       } else {
-        // Fallback: manually append if socket is offline
         setMessages((prev) => [...prev, savedMessage]);
       }
 
-      // Step C: Update recent chats
       setRecentChats((prev) => ({
         ...prev,
         [activeContact.username]: savedMessage,
@@ -249,12 +267,10 @@ export default function App() {
     }
   };
 
-  // 7. Auth Success
   const handleAuthSuccess = (name) => {
     setCurrentUser(name);
   };
 
-  // 8. Logout
   const handleLogout = () => {
     api.logout();
     disconnectSocket();
@@ -267,11 +283,22 @@ export default function App() {
 
   // SSO Loading splash
   if (ssoLoading) {
+    const isRed = theme === 'red';
     return (
-      <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-950 text-white space-y-4">
-        <div className="w-12 h-12 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin" />
+      <div
+        className={`h-screen w-screen flex flex-col items-center justify-center space-y-4 font-mono ${
+          isRed ? 'bg-[#060204] text-red-50' : 'bg-[#020511] text-cyan-50'
+        }`}
+      >
+        <div
+          className={`w-12 h-12 border-4 rounded-full animate-spin ${
+            isRed ? 'border-red-500/20 border-t-red-500' : 'border-cyan-500/20 border-t-cyan-400'
+          }`}
+        />
         <div className="text-center space-y-1">
-          <h3 className="text-base font-bold text-white">Connecting Private Chat 🔒</h3>
+          <h3 className="text-base font-bold text-white tracking-widest">
+            INITIALIZING HACKER SESSION...
+          </h3>
           <p className="text-xs text-slate-400">{ssoMessage}</p>
         </div>
       </div>
@@ -280,23 +307,44 @@ export default function App() {
 
   // If not logged in, render the Auth view
   if (!currentUser) {
-    return <AuthModal onAuthSuccess={handleAuthSuccess} />;
+    return (
+      <AuthModal
+        onAuthSuccess={handleAuthSuccess}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+      />
+    );
   }
 
+  const isRed = theme === 'red';
+
   return (
-    <div className="h-screen w-screen flex bg-slate-950 text-slate-100 overflow-hidden relative font-sans">
+    <div
+      className={`h-screen w-screen flex overflow-hidden relative font-sans ${
+        isRed ? 'theme-red bg-[#060204]' : 'theme-blue bg-[#020511]'
+      }`}
+    >
       {/* Toast Notification Banner */}
       <Toast
         toast={toast}
         onClose={() => setToast(null)}
-        onSelectContact={(contact) => {
-          setActiveContact(contact);
-        }}
+        onSelectContact={(contact) => setActiveContact(contact)}
+        theme={theme}
       />
 
+      {/* WhatsApp Audio / Video Call Modal */}
+      {callModal.isOpen && (
+        <CallModal
+          contact={callModal.contact}
+          isVideo={callModal.isVideo}
+          theme={theme}
+          onClose={handleEndCall}
+        />
+      )}
+
       {/* Responsive layout:
-          - On mobile (< md): Sidebar is visible when no contact is selected; ChatWindow is visible when contact is selected.
-          - On desktop (>= md): Both Sidebar and ChatWindow/EmptyChat are shown side-by-side.
+          - On mobile (< md): Sidebar when no contact selected, ChatWindow when contact selected.
+          - On desktop (>= md): Both side-by-side.
       */}
       <div className={`h-full w-full md:w-auto ${activeContact ? 'hidden md:block' : 'block'}`}>
         <Sidebar
@@ -308,6 +356,8 @@ export default function App() {
           recentChats={recentChats}
           unreadCounts={unreadCounts}
           onLogout={handleLogout}
+          theme={theme}
+          onToggleTheme={toggleTheme}
         />
       </div>
 
@@ -321,9 +371,11 @@ export default function App() {
             onBack={() => setActiveContact(null)}
             isOnline={onlineUsers.includes(activeContact.username)}
             isSending={isSending}
+            theme={theme}
+            onStartCall={handleStartCall}
           />
         ) : (
-          <EmptyChat currentUser={currentUser} />
+          <EmptyChat currentUser={currentUser} theme={theme} />
         )}
       </div>
     </div>

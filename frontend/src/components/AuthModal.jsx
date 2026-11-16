@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { MessageSquare, Lock, User, Eye, EyeOff, Sparkles, ArrowRight, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Terminal, Lock, User, Eye, EyeOff, Sparkles, ArrowRight, Palette, Shield } from 'lucide-react';
 import { api } from '../services/api';
 
-export default function AuthModal({ onAuthSuccess }) {
+export default function AuthModal({ onAuthSuccess, theme = 'blue', onToggleTheme }) {
   const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -10,6 +10,8 @@ export default function AuthModal({ onAuthSuccess }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  const isRed = theme === 'red';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,7 +27,6 @@ export default function AuthModal({ onAuthSuccess }) {
       if (isRegister) {
         await api.register(username.trim(), password.trim());
         setSuccessMsg('Account registered successfully! Now logging you in...');
-        // Auto-login after registration
         const loginData = await api.login(username.trim(), password.trim());
         onAuthSuccess(loginData.username);
       } else {
@@ -40,142 +41,181 @@ export default function AuthModal({ onAuthSuccess }) {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-slate-950 relative overflow-hidden">
-      {/* Ambient background glows */}
-      <div className="absolute top-1/4 -left-20 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 -right-20 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:24px_24px] opacity-40 pointer-events-none" />
+    <div
+      className={`min-h-screen w-full flex items-center justify-center p-4 relative overflow-hidden font-mono transition-colors duration-300 ${
+        isRed ? 'bg-[#060204] text-red-50' : 'bg-[#020511] text-slate-100'
+      }`}
+    >
+      {/* Background Matrix Grid */}
+      <div className={`absolute inset-0 ${isRed ? 'cyber-grid-red' : 'cyber-grid-blue'} opacity-40 pointer-events-none`} />
+      <div
+        className={`absolute top-1/4 -left-20 w-96 h-96 rounded-full blur-3xl pointer-events-none ${
+          isRed ? 'bg-red-600/15' : 'bg-cyan-600/15'
+        }`}
+      />
+      <div
+        className={`absolute bottom-1/4 -right-20 w-96 h-96 rounded-full blur-3xl pointer-events-none ${
+          isRed ? 'bg-rose-700/15' : 'bg-blue-600/15'
+        }`}
+      />
 
-      <div className="w-full max-w-md bg-slate-900/90 border border-slate-800/80 backdrop-blur-2xl rounded-3xl p-8 shadow-2xl relative z-10 animate-pop-in">
-        {/* App Logo & Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-500 shadow-lg shadow-indigo-500/25 mb-4 text-white">
-            <MessageSquare className="w-8 h-8" />
+      <div
+        className={`w-full max-w-md rounded-3xl p-8 shadow-2xl relative z-10 border backdrop-blur-xl ${
+          isRed
+            ? 'bg-[#0f0409]/95 border-red-800/40 neon-glow-red'
+            : 'bg-[#070e24]/95 border-cyan-800/40 neon-glow-blue'
+        }`}
+      >
+        {/* Top Bar Switcher */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-slate-400">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            <span>SYSTEM ENCRYPTED</span>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight flex items-center justify-center gap-2">
-            <span>MERN Realtime Chat</span>
-            <Sparkles className="w-4 h-4 text-amber-400" />
+
+          <button
+            type="button"
+            onClick={onToggleTheme}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold border transition cursor-pointer ${
+              isRed
+                ? 'bg-red-950/70 border-red-600/50 text-red-300'
+                : 'bg-cyan-950/70 border-cyan-500/50 text-cyan-300'
+            }`}
+          >
+            <Palette className="w-3 h-3" />
+            <span>{isRed ? 'RED HACKER' : 'BLUE HACKER'}</span>
+          </button>
+        </div>
+
+        {/* Logo & Header */}
+        <div className="text-center mb-6">
+          <div
+            className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl border mb-3 shadow-lg ${
+              isRed
+                ? 'bg-[#1b0812] border-red-500/50 text-red-400 neon-glow-red'
+                : 'bg-[#0a1636] border-cyan-400/50 text-cyan-400 neon-glow-blue'
+            }`}
+          >
+            <Terminal className="w-8 h-8" />
+          </div>
+          <h1 className="text-2xl font-black text-white tracking-tight flex items-center justify-center gap-2">
+            <span>TERMINAL CHAT</span>
           </h1>
-          <p className="text-slate-400 text-sm mt-1">
-            {isRegister ? 'Create an account to start messaging' : 'Sign in to connect with your friends'}
+          <p className="text-slate-400 text-xs mt-1">
+            {isRegister ? 'Register new root credentials' : 'Authenticate root session to enter'}
           </p>
         </div>
 
-        {/* Tab Switcher */}
-        <div className="grid grid-cols-2 p-1 bg-slate-950/70 border border-slate-800 rounded-2xl mb-6">
+        {/* Tabs */}
+        <div className="grid grid-cols-2 p-1 bg-black/50 border border-white/10 rounded-2xl mb-6">
           <button
             type="button"
             onClick={() => {
               setIsRegister(false);
               setError('');
-              setSuccessMsg('');
             }}
-            className={`py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${
+            className={`py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
               !isRegister
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
+                ? isRed
+                  ? 'bg-red-600 text-white shadow-md'
+                  : 'bg-cyan-500 text-slate-950 shadow-md font-black'
+                : 'text-slate-400 hover:text-white'
             }`}
           >
-            Sign In
+            LOG IN
           </button>
           <button
             type="button"
             onClick={() => {
               setIsRegister(true);
               setError('');
-              setSuccessMsg('');
             }}
-            className={`py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer ${
+            className={`py-2 text-xs font-bold rounded-xl transition cursor-pointer ${
               isRegister
-                ? 'bg-indigo-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-slate-200'
+                ? isRed
+                  ? 'bg-red-600 text-white shadow-md'
+                  : 'bg-cyan-500 text-slate-950 shadow-md font-black'
+                : 'text-slate-400 hover:text-white'
             }`}
           >
-            Create Account
+            REGISTER
           </button>
         </div>
 
-        {/* Error / Success Banners */}
-        {error && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {successMsg && (
-          <div className="mb-4 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
-            <span>{successMsg}</span>
-          </div>
-        )}
-
-        {/* Auth Form */}
+        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+            <label className="block text-[11px] font-bold text-slate-300 mb-1.5 uppercase">
               Username
             </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <User className="w-4 h-4" />
-              </div>
+            <div className="relative flex items-center">
+              <User className="w-4 h-4 text-slate-500 absolute left-3.5 pointer-events-none" />
               <input
                 type="text"
-                required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="e.g. mohan, alex, sarah"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+                placeholder="e.g. joker, Mohanraj"
+                className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs outline-none border transition ${
+                  isRed
+                    ? 'bg-[#14060f] border-red-900/40 text-red-50 focus:border-red-500'
+                    : 'bg-[#091228] border-cyan-900/40 text-cyan-50 focus:border-cyan-400'
+                }`}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1.5 uppercase tracking-wider">
+            <label className="block text-[11px] font-bold text-slate-300 mb-1.5 uppercase">
               Password
             </label>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                <Lock className="w-4 h-4" />
-              </div>
+            <div className="relative flex items-center">
+              <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 pointer-events-none" />
               <input
                 type={showPassword ? 'text' : 'password'}
-                required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter your password"
-                className="w-full pl-10 pr-10 py-2.5 bg-slate-950/80 border border-slate-800 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition"
+                placeholder="pearlbee or your password"
+                className={`w-full pl-10 pr-10 py-2.5 rounded-xl text-xs outline-none border transition ${
+                  isRed
+                    ? 'bg-[#14060f] border-red-900/40 text-red-50 focus:border-red-500'
+                    : 'bg-[#091228] border-cyan-900/40 text-cyan-50 focus:border-cyan-400'
+                }`}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 cursor-pointer"
+                className="absolute right-3 text-slate-500 hover:text-slate-300 cursor-pointer"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
           </div>
 
+          {error && (
+            <div className="p-2.5 rounded-xl bg-red-950/60 border border-red-500/40 text-red-300 text-[11px]">
+              {error}
+            </div>
+          )}
+
+          {successMsg && (
+            <div className="p-2.5 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-[11px]">
+              {successMsg}
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-2 py-3 px-4 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold rounded-xl text-sm shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.98]"
+            className={`w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider transition-all duration-200 cursor-pointer flex items-center justify-center gap-2 text-white shadow-lg ${
+              isRed
+                ? 'bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-600 neon-glow-red'
+                : 'bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-blue-500 neon-glow-blue'
+            }`}
           >
-            {loading ? (
-              <span className="inline-block w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-            ) : (
-              <>
-                <span>{isRegister ? 'Register & Enter' : 'Sign In'}</span>
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
+            {loading ? 'AUTHENTICATING...' : isRegister ? 'INITIALIZE ACCOUNT' : 'ENTER TERMINAL'}
+            <ArrowRight className="w-4 h-4" />
           </button>
         </form>
-
-        <div className="mt-6 text-center text-xs text-slate-500">
-          Connected to MongoDB Atlas Backend on <span className="text-slate-400 font-mono">localhost:5000</span>
-        </div>
       </div>
     </div>
   );
