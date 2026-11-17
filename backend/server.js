@@ -1,4 +1,4 @@
-require("dotenv").config();
+const path = require("path"); require("dotenv").config({ path: path.join(__dirname, ".env") }); require("dotenv").config();
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
@@ -56,9 +56,9 @@ server.listen(5000, () => {
 });
 
 // Connect to Atlas with fallback note
-mongoose
-    .connect(process.env.MONGO_URI, { serverSelectionTimeoutMS: 4000 })
+const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://mohanmpa2_db_user:pw7hsGWI556WTsfC@chat-app.x3zg8lh.mongodb.net/nezuko_chat?retryWrites=true&w=majority&compressors=zlib"; mongoose.connect(MONGO_URI, { serverSelectionTimeoutMS: 4000 })
     .then(() => console.log("Connected to MongoDB Atlas successfully!"))
     .catch((error) => {
         console.warn("MongoDB Atlas notice: Using high-speed local failover store. (To connect directly, whitelist 0.0.0.0/0 on Atlas Network Access). Error:", error.message);
     });
+
