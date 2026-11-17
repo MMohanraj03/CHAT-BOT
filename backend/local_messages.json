@@ -48,5 +48,20 @@
     "timestamp": "04:01 pm",
     "read": false,
     "createdAt": 1794825066229
+  },
+  {
+    "_id": "pmsg-1794825361664-1nzac",
+    "id": "pmsg-1794825361664-1nzac",
+    "sender": "raja",
+    "receiver": "GOD",
+    "text": "Database sync verified!",
+    "image": "",
+    "audio": "",
+    "replyTo": null,
+    "reactions": {},
+    "avatar": "/logo_eye.jpg",
+    "timestamp": "04:06 pm",
+    "read": false,
+    "createdAt": 1794825361677
   }
 ]
